@@ -1,4 +1,7 @@
 # -*- encoding: utf-8 -*-
+
+#Alunos: Artur Bizon e Gianluca Scheidemantel
+
 import time 
 import json
 import re
@@ -10,7 +13,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 url = "http://apps.tre-sc.jus.br/site/fileadmin/arquivos/eleicoes/estatistica_eleitoral/estat_offline/perfil.htm"
-
+driverPath = r"C:\Users\abizon\Documents\IntroducaoDataScience\AtividadeWebScrapping\chromedriver.exe"
 attributes = {"Situacao": "50",
              "FaixaEtaria": "51",
              "GrauDeInstrucao": "52",
@@ -18,48 +21,52 @@ attributes = {"Situacao": "50",
              "EstadoCivil": "54",}
 
 def extract_table_data(table, fileName):
-    linhas = table.find_elements_by_tag_name("tr")
+    rows = table.find_elements_by_tag_name("tr")
     # Monta dict
     dic = {}
-    dados = []
+    data = []
 
-    for indice, coluna in enumerate(linhas[0].find_elements_by_tag_name("th")):
-        outerhtml = coluna.get_attribute('outerHTML')
+    #Carrega cabecalho
+    for index, column in enumerate(rows[0].find_elements_by_tag_name("th")):
+        outerhtml = column.get_attribute('outerHTML')
         tag_value = re.search(">(.+?)<",outerhtml).group(1)
-        dados.append([tag_value.replace(".", "")])
-
-    for linha in linhas[1:]:
-        colunas = linha.find_elements_by_tag_name("td")
-        for indice, coluna in enumerate(colunas):
-            outerhtml = coluna.get_attribute('outerHTML')
+        data.append([tag_value.replace(".", "")])
+        
+    #Carrega os dados
+    for row in rows[1:]:
+        columns = row.find_elements_by_tag_name("td")
+        for index, column in enumerate(columns):
+            outerhtml = column.get_attribute('outerHTML')
             tag_value = re.search(">(.+?)<",outerhtml).group(1)
-            dados[indice].append(tag_value.replace(".", ""))
+            data[index].append(tag_value.replace(".", ""))
 
-    for indice, coluna in enumerate(dados):
-        dic[coluna[0]] = coluna[1:]
+    # Transforma a matriz em dicionario para gerar o dataGrame
+    for index, column in enumerate(data):
+        dic[column[0]] = column[1:]
 
     df = pd.DataFrame(dic)
-    df.to_csv(fileName,index=False,encoding="latin_1")
+    df.to_csv(fileName, index=False, encoding="latin_1")
     pass
 
 
-driver = webdriver.Chrome(r"C:\Users\abizon\Documents\IntroducaoDataScience\AtividadeWebScrapping\chromedriver.exe")  # Optional argument, if not specified will search path.
-driver.get(url);
+driver = webdriver.Chrome(driverPath)
+driver.get(url)
+
 for key in attributes:
-    # time.sleep(1) # Let the user actually see something!
+    # time.sleep(1) 
     select = driver.find_element_by_name('lstCategoria')
     allOptions = select.find_elements_by_tag_name("option")
     for option in allOptions:
         if option.get_attribute("value") == attributes[key]:
             option.click()
-    # time.sleep(1) # Let the user actually see something!
+    # time.sleep(1) 
 
     btnSearch = driver.find_element_by_name("GO")
     btnSearch.click()
     # time.sleep(1)
-    tabela = driver.find_element_by_css_selector('table.appDataTable')
+    table = driver.find_element_by_css_selector('table.appDataTable')
 
-    extract_table_data(tabela, key+".csv")
-    time.sleep(1)
+    extract_table_data(table, key+".csv")
+    # time.sleep(1)
     driver.back()
 driver.quit()
